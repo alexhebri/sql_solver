@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SQL Solver</title>
+    <style>
+      :root {
+        --bg: #0f1117;
+        --panel: #171a23;
+        --panel-2: #1d2230;
+        --text: #e6e8ef;
+        --muted: #a3a9b8;
+        --accent: #7dd3a5;
+        --accent-2: #5bbad6;
+        --error: #ff6b6b;
+        --border: #2a3042;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        width: 360px;
+      }
+
+      .wrap { padding: 16px 16px 14px; }
+
+      h1 {
+        font-size: 16px;
+        margin: 0 0 12px;
+        letter-spacing: 0.3px;
+      }
+
+      .field { margin-bottom: 10px; }
+
+      label {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      input[type="password"],
+      input[type="text"],
+      textarea {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--text);
+        font-size: 13px;
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 110px;
+        max-height: 200px;
+        line-height: 1.4;
+      }
+
+      button {
+        width: 100%;
+        padding: 10px 12px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #0b0d12;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .status {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .status strong { color: var(--accent); }
+
+      .error { color: var(--error); }
+
+      .output {
+        margin-top: 10px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: #0c0f16;
+        border: 1px dashed var(--border);
+        color: var(--text);
+        font-size: 12px;
+        min-height: 48px;
+        white-space: pre-wrap;
+      }
+
+      .tip {
+        margin-top: 10px;
+        font-size: 10px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>SQL Solver</h1>
+
+      <div class="field">
+        <label for="apiKey">OpenRouter API Key</label>
+        <input id="apiKey" type="password" placeholder="sk-or-..." />
+      </div>
+
+      <div class="field">
+        <label for="model">Model</label>
+        <input id="model" type="text" value="deepseek/deepseek-v4-flash" />
+      </div>
+
+      <div class="field">
+        <label for="userInput">Cerinta sau SQL</label>
+        <textarea id="userInput" placeholder="Scrie cerinta in limbaj natural sau lipeste un query SQL..."></textarea>
+      </div>
+
+      <button id="runBtn">Generate / Improve</button>
+
+      <div class="status" id="statusArea">
+        <div><strong>Detected:</strong> <span id="modePreview">-</span></div>
+        <div><strong>Status:</strong> <span id="statusText">Idle</span></div>
+      </div>
+
+      <div class="output" id="outputArea"></div>
+
+      <div class="tip">
+        Nota: Schema bazei de date va fi adaugata ulterior pentru corectii mai precise.
+      </div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
