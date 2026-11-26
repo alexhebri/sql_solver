@@ -6,15 +6,14 @@
     <title>SQL Solver</title>
     <style>
       :root {
-        --bg: #0f1117;
-        --panel: #171a23;
-        --panel-2: #1d2230;
-        --text: #e6e8ef;
-        --muted: #a3a9b8;
-        --accent: #7dd3a5;
-        --accent-2: #5bbad6;
-        --error: #ff6b6b;
-        --border: #2a3042;
+        --bg: oklch(15% 0.015 165);
+        --panel: oklch(20% 0.018 165);
+        --panel-2: oklch(24% 0.018 165);
+        --text: oklch(92% 0.015 165);
+        --muted: oklch(72% 0.02 165);
+        --accent: oklch(78% 0.13 155);
+        --error: oklch(72% 0.16 25);
+        --border: oklch(34% 0.025 165);
       }
 
       * { box-sizing: border-box; }
@@ -35,7 +34,7 @@
         letter-spacing: 0.3px;
       }
 
-      .field { margin-bottom: 10px; }
+      .field { margin-bottom: 12px; }
 
       label {
         display: block;
@@ -66,8 +65,8 @@
       button {
         width: 100%;
         padding: 10px 12px;
-        background: linear-gradient(135deg, var(--accent), var(--accent-2));
-        color: #0b0d12;
+        background: var(--accent);
+        color: oklch(18% 0.02 165);
         border: none;
         border-radius: 10px;
         font-weight: 600;
@@ -75,9 +74,42 @@
         cursor: pointer;
       }
 
+      button:focus-visible,
+      input:focus-visible,
+      textarea:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
       button:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+      }
+
+      .schema-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .schema-controls button {
+        width: auto;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        background: var(--panel-2);
+        color: var(--text);
+        font-size: 12px;
+      }
+
+      .schema-controls button:disabled {
+        display: none;
+      }
+
+      .schema-name {
+        min-width: 0;
+        color: var(--muted);
+        font-size: 11px;
+        overflow-wrap: anywhere;
       }
 
       .status {
@@ -98,7 +130,7 @@
         margin-top: 10px;
         padding: 8px 10px;
         border-radius: 8px;
-        background: #0c0f16;
+        background: oklch(12% 0.015 165);
         border: 1px dashed var(--border);
         color: var(--text);
         font-size: 12px;
@@ -132,9 +164,19 @@
         <textarea id="userInput" placeholder="Scrie cerinta in limbaj natural sau lipeste un query SQL..."></textarea>
       </div>
 
+      <div class="field" role="group" aria-labelledby="schemaLabel">
+        <label id="schemaLabel">Database schema</label>
+        <div class="schema-controls">
+          <button id="loadSchemaBtn" type="button">Load SQL schema</button>
+          <input id="schemaFileInput" type="file" accept=".sql,text/plain" hidden />
+          <button id="resetSchemaBtn" type="button" disabled>Use bundled schema</button>
+          <span id="schemaName" class="schema-name" aria-live="polite">Loading bundled schema…</span>
+        </div>
+      </div>
+
       <button id="runBtn">Generate / Improve</button>
 
-      <div class="status" id="statusArea">
+      <div class="status" id="statusArea" role="status" aria-live="polite">
         <div><strong>Detected:</strong> <span id="modePreview">-</span></div>
         <div><strong>Status:</strong> <span id="statusText">Idle</span></div>
       </div>
@@ -142,7 +184,7 @@
       <div class="output" id="outputArea"></div>
 
       <div class="tip">
-        Nota: Schema bazei de date va fi adaugata ulterior pentru corectii mai precise.
+        Your selected schema is saved in this browser and included with each request.
       </div>
     </div>
 

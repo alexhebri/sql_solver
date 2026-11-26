@@ -5,6 +5,10 @@
   var modelInput = document.getElementById("model");
   var userInput = document.getElementById("userInput");
   var runBtn = document.getElementById("runBtn");
+  var loadSchemaBtn = document.getElementById("loadSchemaBtn");
+  var schemaFileInput = document.getElementById("schemaFileInput");
+  var resetSchemaBtn = document.getElementById("resetSchemaBtn");
+  var schemaName = document.getElementById("schemaName");
   var modePreview = document.getElementById("modePreview");
   var statusText = document.getElementById("statusText");
   var outputArea = document.getElementById("outputArea");
@@ -12,6 +16,9 @@
 
   var DEFAULT_MODEL = "deepseek/deepseek-v4-flash";
   var SCHEMA_STORAGE_KEY = "sql_schema_text";
+  var SCHEMA_NAME_STORAGE_KEY = "sql_schema_filename";
+  var bundledSchema = "";
+  var bundledSchemaError = null;
 
   function setStatus(message, isError) {
     statusText.textContent = message || "";
@@ -51,21 +58,41 @@
     return hasSqlKeywords.test(t) && (hasSemicolon || t.length > 30);
   }
 
-  function getSchemaText() {
+  function getCustomSchema() {
     return localStorage.getItem(SCHEMA_STORAGE_KEY) || "";
+  }
+
+  function getSchemaText() {
+    return getCustomSchema() || bundledSchema;
+  }
+
+  function updateSchemaLabel() {
+    var customSchema = getCustomSchema();
+    var savedName = localStorage.getItem(SCHEMA_NAME_STORAGE_KEY);
+    resetSchemaBtn.disabled = !customSchema;
+    if (customSchema) {
+      schemaName.textContent = "Custom: " + (savedName || "uploaded schema");
+    } else if (bundledSchema) {
+      schemaName.textContent = "Bundled: SQL_Schema.sql";
+    } else {
+      schemaName.textContent = bundledSchemaError
+        ? "Bundled schema unavailable"
+        : "Loading bundled schema…";
+    }
   }
 
   function buildPrompt(inputText, mode, schemaText) {
     var schemaBlock = schemaText
-      ? "Schema (Oracle SQL):\n" + schemaText
-      : "Schema (Oracle SQL): [not provided yet]";
+      ? "Database schema:\n" + schemaText
+      : "Database schema: [not provided]";
 
     var system =
-      "You are a senior Oracle SQL expert. You generate or fix SQL based on user intent.\n" +
+      "You are a senior SQL expert. You generate or fix SQL based on user intent.\n" +
       "Rules:\n" +
       "- If the input is a requirement in natural language, generate the correct SQL.\n" +
       "- If the input is already SQL, correct or improve it while preserving the intent.\n" +
-      "- Use the schema if provided. If schema is missing, do your best and keep it generic.\n" +
+      "- Use the schema if provided and follow the SQL dialect it indicates. If unclear, preserve the input query's dialect or use broadly compatible SQL.\n" +
+      "- If the schema is missing, do your best and keep the SQL generic.\n" +
       "- Output ONLY SQL. No explanations, no markdown, no extra text.\n\n" +
       schemaBlock;
 
@@ -119,6 +146,60 @@
     runBtn.disabled = isBusy;
   }
 
+  async function loadBundledSchema() {
+    var response = await fetch("SQL_Schema/SQL_Schema.sql");
+    if (!response.ok) {
+      throw new Error("Could not load the bundled SQL schema (" + response.status + ").");
+    }
+
+    var schema = await response.text();
+    if (!schema.trim()) {
+      throw new Error("The bundled SQL schema is empty.");
+    }
+
+    bundledSchema = schema;
+  }
+
+  async function onSchemaFileChange() {
+    var file = schemaFileInput.files && schemaFileInput.files[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      if (!/\.sql$/i.test(file.name)) {
+        throw new Error("Choose a .sql file.");
+      }
+
+      var schema = await file.text();
+      if (!schema.trim()) {
+        throw new Error("The selected SQL schema is empty.");
+      }
+
+      localStorage.setItem(SCHEMA_STORAGE_KEY, schema);
+      localStorage.setItem(SCHEMA_NAME_STORAGE_KEY, file.name);
+      updateSchemaLabel();
+      setStatus("Loaded schema: " + file.name, false);
+    } catch (err) {
+      setStatus(err.message || "Could not load the selected schema.", true);
+    } finally {
+      schemaFileInput.value = "";
+    }
+  }
+
+  function resetSchema() {
+    localStorage.removeItem(SCHEMA_STORAGE_KEY);
+    localStorage.removeItem(SCHEMA_NAME_STORAGE_KEY);
+    updateSchemaLabel();
+    if (bundledSchema) {
+      setStatus("Using bundled schema.", false);
+    } else if (bundledSchemaError) {
+      setStatus(bundledSchemaError.message, true);
+    } else {
+      setStatus("Loading bundled schema…", false);
+    }
+  }
+
   async function onRun() {
     try {
       setBusy(true);
@@ -137,10 +218,19 @@
         throw new Error("Please enter a requirement or SQL query.");
       }
 
+      var schemaText = getSchemaText();
+      if (!schemaText.trim()) {
+        throw new Error(
+          bundledSchemaError
+            ? bundledSchemaError.message
+            : "No SQL schema is available."
+        );
+      }
+
       var mode = isLikelySql(inputText) ? "sql" : "requirement";
       modePreview.textContent = mode;
 
-      var prompt = buildPrompt(inputText, mode, getSchemaText());
+      var prompt = buildPrompt(inputText, mode, schemaText);
       var result = await callOpenRouter(apiKey, model, prompt);
       var sql = extractSql(result);
 
@@ -158,8 +248,25 @@
   }
 
   runBtn.addEventListener("click", onRun);
+  loadSchemaBtn.addEventListener("click", function () {
+    schemaFileInput.click();
+  });
+  schemaFileInput.addEventListener("change", onSchemaFileChange);
+  resetSchemaBtn.addEventListener("click", resetSchema);
   apiKeyInput.addEventListener("change", saveSettings);
   modelInput.addEventListener("change", saveSettings);
 
   loadSettings();
+  updateSchemaLabel();
+  loadBundledSchema()
+    .then(function () {
+      updateSchemaLabel();
+    })
+    .catch(function (err) {
+      bundledSchemaError = err;
+      updateSchemaLabel();
+      if (!getCustomSchema()) {
+        setStatus(err.message || "Could not load the bundled schema.", true);
+      }
+    });
 })();
